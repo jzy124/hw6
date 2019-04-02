@@ -1,0 +1,299 @@
+1.
+import cv2
+import matplotlib.pyplot as plt
+import random
+import numpy as np
+
+
+def gaussianNoise(img_in, sigma1, z_ave1):
+    m, n = img_in.shape
+    img1 = img_in.copy()
+    for i in range(m):
+        for j in range(n):
+            x = random.gauss(z_ave1, sigma1)
+            if ((img_in[i][j] + x) < 255) & ((img_in[i][j] + x) > 0):
+                img1[i][j] = float(img_in[i][j] + x)
+            # img1[i][j] = float(img_in[i][j] + random.gauss(z_ave1, sigma1))
+    return img1
+
+
+def arthMean(img_in, m, n):
+    h, w = img_in.shape
+    img_out = np.zeros((h, w))
+    for i in range(h):
+        for j in range(w):
+            ave = 0
+            for x in range(i - (m - 1) // 2, i + (m - 1) // 2 + 1):
+                if x < 0:
+                    xx = abs(x)
+                elif x > h - 1:
+                    xx = 2 * h - 1 - x
+                else:
+                    xx = x
+                for y in range(j - (n - 1) // 2, j + (n - 1) // 2 + 1):
+                    if y < 0:
+                        yy = abs(y)
+                    elif y > w - 1:
+                        yy = 2 * w - 1 - y
+                    else:
+                        yy = y
+                    ave = ave + img_in[xx][yy]
+            ave = ave / (m * n)
+            img_out[i][j] = round(ave)
+    return img_out
+
+
+def median(img_in, size):
+    img_out = img.copy()
+    s = (size - 1) // 2
+    arr = cv2.copyMakeBorder(img_in, s, s, s, s, cv2.BORDER_CONSTANT, value=0)
+    w, h = img_in.shape
+    arr_s = np.zeros((size, size))
+    for i in range(s, w + s):
+        for j in range(s, h + s):
+            for i1 in range(i - s, i + s + 1):
+                for j1 in range(j - s, j + s + 1):
+                    arr_s[i1 - (i - s)][j1 - (j - s)] = arr[i1][j1]
+            arr_f = arr_s.flatten()
+            c = np.median(arr_f)
+            img_out[i - s][j - s] = c
+    return img_out
+
+
+
+sigma = 10
+z_ave = 0
+img = cv2.imread("lena.bmp", 0)
+img1 = gaussianNoise(img, sigma, z_ave)
+img2 = arthMean(img1, 3, 3)
+img3 = median(img, 3)
+plt.figure("noise")
+plt.imshow(img1, cmap="gray")
+plt.axis('off')
+
+plt.figure("filter")
+plt.imshow(img2, cmap="gray")
+plt.axis('off')
+
+plt.figure("median")
+plt.imshow(img3, cmap="gray")
+plt.axis('off')
+plt.show()
+
+
+2.
+import cv2
+import matplotlib.pyplot as plt
+import numpy as np
+
+
+def peppersalt(img, p):
+    img1 = img.copy()
+    num = int(p * m * n)
+    for i in range(num):
+        x = np.random.randint(m - 1)
+        y = np.random.randint(n - 1)
+        img1[x][y] = 255
+        # x1 = np.random.randint(m - 1)
+        # y1 = np.random.randint(n - 1)
+        # img1[x1][y1] = 0
+
+    return img1
+
+
+def ContraHarMeanFilter(img_in, m, n, Q):
+    h, w = img_in.shape
+    img_out = np.zeros((h, w))
+    for i in range(h):
+        for j in range(w):
+            sum1 = 0
+            sum2 = 0
+            for x in range(i - (m - 1) // 2, i + (m - 1) // 2 + 1):
+                if x < 0:
+                    xx = abs(x)
+                elif x > h - 1:
+                    xx = 2 * h - 1 - x
+                else:
+                    xx = x
+                for y in range(j - (n - 1) // 2, j + (n - 1) // 2 + 1):
+                    if y < 0:
+                        yy = abs(y)
+                    elif y > w - 1:
+                        yy = 2 * w - 1 - y
+                    else:
+                        yy = y
+                    if Q >= 0:
+                        sum1 = sum1 + img_in[xx][yy] ** (Q+1)
+                        sum2 = sum2 + img_in[xx][yy] ** Q
+                    else:
+                        sum1 = sum1 + (1 / (img_in[xx][yy] + 1)) ** (abs(Q) - 1)
+                        sum2 = sum2 + (1 / (img_in[xx][yy] + 1)) ** abs(Q)
+            ave = sum1 / sum2
+            img_out[i][j] = round(ave)
+    return img_out
+
+
+img = cv2.imread("lena.bmp", 0)
+m, n = img.shape
+percentage = 0.1
+img1 = peppersalt(img, percentage)
+plt.figure("noise")
+plt.imshow(img1, cmap="gray")
+plt.axis('off')
+
+img2 = ContraHarMeanFilter(img1, 3, 3, -1)
+plt.figure("filter")
+plt.imshow(img2, cmap="gray")
+plt.axis('off')
+plt.show()
+
+
+
+
+3.
+import cv2
+import matplotlib.pyplot as plt
+import cmath
+import math
+import numpy as np
+from GaussianNoise import gaussianNoise
+
+
+def blur(m1, n1, T1, a1, b1):
+    H1 = np.zeros((m1, n1), complex)
+    for i1 in range(1, m1):
+        for j1 in range(1, n1):
+            u = i1 - m1 / 2
+            v = j1 - n1 / 2
+            t1 = u * a1 + v * b1
+            if t1 != 0:
+                H1[i1][j1] = T1 * cmath.sin(math.pi * (u * a1 + v * b1)) / (math.pi * t1)
+                H1[i1][j1] = H1[i1][j1] * cmath.exp(complex(0, -cmath.pi * (u * a1 + v * b1)))
+            else:
+                H1[i1][j1] = 1
+    return H1
+
+
+def wiener(H_in, K):
+    m1, n1 = H_in.shape
+    H_out = np.zeros((m1, n1), complex)
+    for u in range(1, m1):
+        for v in range(1, n1):
+            H_out[u][v] = 1 / H_in[u][v] * abs(H_in[u][v]) ** 2 / (abs(H_in[u][v]) ** 2 + K)
+    return H_out
+
+
+def laplace(p, q):
+    cdm1 = np.zeros((p, q))
+    for u in range(p):
+        for v in range(q):
+            cdm1[u][v] = (u) ** 2 + (v) ** 2
+    P = 1 + 4 * (math.pi ** 2) * cdm1
+    return P
+
+
+def constrainedLeastSquares(H_in, gama, P, G_in):
+    m1, n1 = H_in.shape
+    H_out = np.zeros((m1, n1), complex)
+    F_out = np.zeros((m1, n1), complex)
+    for u in range(1, m1):
+        for v in range(1, n1):
+            H_out[u][v] = np.conj(H_in[u][v]) / (abs(H_in[u][v]) ** 2 + gama * abs(P[u][v]) ** 2)
+            F_out[u][v] = G_in[u][v] * H_out[u][v]
+    return H_out, F_out
+
+
+def findgama(H_in, gama):
+    m1, n1 = H_in.shape
+    R = np.zeros((m1, n1), complex)
+    H_out, F_out = constrainedLeastSquares(H_in, gama, P, G)
+    for u in range(m1):
+        for v in range(n1):
+            R[u][v] = G[u][v] - H_out[u][v] * F_out[u][v]
+    r = np.fft.ifft2(R)
+    if np.linalg.norm(r, ord=2) < noise - 0.25:
+        gama += 1e-6
+        gama, H_out, F_out = findgama(H_out, gama)
+    if np.linalg.norm(r, ord=2) > noise + 0.25:
+        gama -= 1e-6
+        gama, H_out, F_out = findgama(H_out, gama)
+    return gama, H_out, F_out
+
+
+img = cv2.imread("lena.bmp", 0)
+m, n = img.shape
+F = np.fft.fft2(img)
+p, q = F.shape
+F = np.fft.fftshift(F)
+
+T = 1
+a = 0.05
+b = 0.05
+
+H = blur(p, q, T, a, b)
+G = np.zeros((p, q), complex)
+for i in range(p):
+    for j in range(q):
+        G[i][j] = F[i][j] * H[i][j]
+
+G = np.fft.ifftshift(G)
+g = np.fft.ifft2(G)
+img1 = np.zeros((m, n))
+for x in range(m):
+    for y in range(n):
+        img1[x][y] = abs(g[x][y])
+
+sigma = 10
+z_ave = 0
+K = 1E-2
+noise = m * n * sigma
+img2_new = gaussianNoise(img1, sigma, z_ave)  # degradation
+H1 = wiener(H, K)
+G_new = np.fft.fft2(img2_new)
+G_new = np.fft.ifftshift(G_new)
+F1 = np.zeros((p, q), complex)
+for i in range(p):
+    for j in range(q):
+        F1[i][j] = G_new[i][j] * H1[i][j]
+F1 = np.fft.ifftshift(F1)
+f1 = np.fft.ifft2(F1)
+img3 = np.zeros((m, n))
+for x in range(m):
+    for y in range(n):
+        img3[x][y] = abs(f1[x][y])
+
+P = laplace(p, q)
+P = np.fft.ifftshift(P)
+H_n, F2 = constrainedLeastSquares(H, 1e-13, P, G_new)
+# gama1, H2, F2 = findgama(H, 1e-5)
+F2 = np.fft.ifftshift(F2)
+f2 = np.fft.ifft2(F2)
+img4 = np.zeros((m, n))
+for x in range(m):
+    for y in range(n):
+        img4[x][y] = abs(f2[x][y])
+plt.figure("motion blur")
+plt.subplot(121)
+plt.title("Original")
+plt.imshow(img, cmap="gray")
+plt.axis('off')
+plt.subplot(122)
+plt.title("blur")
+plt.imshow(img1, cmap="gray")
+plt.axis('off')
+
+plt.figure("degradation")
+plt.title("gaussianNoise")
+plt.imshow(img2_new, cmap="gray")
+plt.axis('off')
+
+plt.figure("wiener")
+plt.title("wiener")
+plt.imshow(img3, cmap="gray")
+plt.axis('off')
+
+plt.figure("constrainedLeastSquares")
+plt.title("constrainedLeastSquares")
+plt.imshow(img4, cmap="gray")
+plt.axis('off')
+plt.show()
